@@ -1,5 +1,5 @@
-After a model has finished training, quantization compresses its weights by lowering their numeric precision. Moving from FP32 to INT8 cuts the memory footprint by roughly four times and speeds up matrix multiplication on integer-capable accelerators.
+Once the system has mastered its training material, every stored coefficient can be converted to occupy a narrower numeric range. This reduces the amount of room needed to store the copy on drive and accelerates answer generation on compact hardware. The original preparation arrangement is not required.
 
-Large language models are harder to quantize than convolutional networks because a small fraction of hidden states contain enormous magnitudes. Rounding these outlier activations to the nearest INT8 value destroys model coherence and raises perplexity sharply.
+Deep networks for understanding extended sequences of text contain a select few internal pathways whose signals achieve enormous size. Capturing those gigantic values with a crude numerical scheme degrades the correctness of what the system produces.
 
-Two popular remedies are GPTQ and AWQ. They mitigate damage by pinpointing the most important one percent of weights and preserving their precision. The remaining ninety-nine percent are aggressively compressed, which keeps the model small while guarding accuracy.
+Two known techniques called GPTQ and AWQ solve this complication by picking out the limited collection of components that contribute most heavily. Those selected elements stay in their initial wide state, and the rest are squeezed into a much tighter encoding. The resulting system occupies little space while still delivering sound responses.
