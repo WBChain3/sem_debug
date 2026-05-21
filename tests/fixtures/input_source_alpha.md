@@ -1,0 +1,5 @@
+Post-training quantization converts trained model weights from 32-bit floating-point representations to 8-bit integers. This reduces both the storage footprint and the inference latency on edge hardware. The technique is attractive because it requires no access to the original training pipeline or dataset.
+
+A well-known challenge with large language models is the presence of outlier activation channels. These extreme values cause significant accuracy degradation when weights are naively quantized to INT8. The narrow dynamic range of 8-bit integers fails to capture the magnitudes observed in transformer hidden states.
+
+Activation-aware weight quantization and GPTQ address this by identifying the most salient weight groups and retaining higher precision for them during quantization. The remaining parameters are aggressively compressed, yielding a compact model with minimal perplexity increase.
