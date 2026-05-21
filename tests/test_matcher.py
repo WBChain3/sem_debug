@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from matcher import match_passages
 from models import Match, Passage
 
