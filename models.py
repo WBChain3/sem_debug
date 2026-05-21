@@ -28,11 +28,10 @@ class TraceResult:
     output_file: str
     input_files: list[str]
     matches: list[Match]
-    unattributed: list[Passage]
+    unattributed: list[tuple[Passage, float]]
 
 
 @dataclass
 class Verdict:
     status: str
     exit_code: int
-    summary: str
