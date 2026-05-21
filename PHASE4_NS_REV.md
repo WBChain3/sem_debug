@@ -1,7 +1,9 @@
-# PHASE4_NS.md — Build Plan Phase 4
+# PHASE4_NS_REV.md — Build Plan Phase 4 (Revised)
 # CLI, Semantic Extension, and Integration
 
-Source of truth for Phase 4. CODE reads this before touching any file.
+**NORTHSTAR2.md is STALE for Phase 4. This document is the sole source of truth.**
+
+CODE reads this before touching any file.
 Run `pytest -x` after every step. Do not proceed to the next step if any test fails.
 
 ---
@@ -23,8 +25,7 @@ These are settled. Do not re-decide them.
 - All fixtures live in `tests/fixtures/`.
 
 Architectural decisions governing Phase 4: AD-01, AD-02, AD-03, AD-07,
-AD-08, AD-09, AD-11, AD-12, AD-13. Read ARCHITECT_DEC.md if any decision
-below is unclear.
+AD-08, AD-09, AD-11, AD-12, AD-13, AD-14, AD-15, AD-16, AD-17, AD-18.
 
 ---
 
@@ -38,6 +39,9 @@ below is unclear.
 **Status:** Fixed during Phase 3 pre-build vetting.
 - `TraceResult.unattributed` is `list[tuple[Passage, float]]`
 - `Verdict` has only `status: str` and `exit_code: int`
+
+### R-3: `requirements.txt`
+**Status:** Missing from Phase 2. To be created in Step 4.0 below.
 
 ---
 
@@ -80,22 +84,15 @@ Implementation requirements:
 
 1. If `semantic=False`, behavior is unchanged from Phase 2/3.
 2. If `semantic=True`:
-   a. After the TF-IDF loop, collect all `unattributed` passage texts into a list.
-   b. Import `sentence_transformers` (top-level import is acceptable; failure
-      will be caught below).
-   c. Encode unattributed passages and all input passages with
-      `sentence-transformers.SentenceTransformer('all-MiniLM-L6-v2')`.
-   d. Compute cosine similarity between unattributed embeddings and input embeddings.
-   e. For each unattributed passage, if its best semantic score >= `threshold`,
-      create a `Match` with `method="semantic"`, `score=round(best_score, 4)`,
-      and move it from `unattributed` to `matched`.
-   f. Passages failing both TF-IDF and semantic remain in `unattributed` with
-      their **TF-IDF best-failed score unchanged**. The semantic score is used
-      for attribution decision only; the float in the tuple stays the TF-IDF score.
-3. Graceful fallback: if `sentence-transformers` is not installed, raise a typed
-   exception with a clear user-facing message. Do **not** silently fall back to TF-IDF.
-   The exception type must not be bare `Exception`. A custom exception or
-   `ImportError` with a descriptive message is acceptable.
+   a. After the TF-IDF loop completes, collect all unattributed `Passage` texts into a list.
+   b. **Import `sentence_transformers` inside the function body**, inside the `if semantic:` branch. Do **not** place the import at module top level. `sentence-transformers` is not installed in the base environment; a top-level import would crash module load and break all 43 existing tests.
+   c. If the import raises `ModuleNotFoundError`, catch it and raise `ImportError` with the exact message: `"sentence-transformers is required for semantic matching. Install it: pip install -r requirements-semantic.txt"`. The exception must not be bare `Exception`.
+   d. Encode unattributed passage texts and all input passage texts with `sentence_transformers.SentenceTransformer('all-MiniLM-L6-v2')`.
+   e. Compute cosine similarity between semantic embeddings of unattributed passages and input passages. Use the same `sklearn.metrics.pairwise.cosine_similarity` already imported, or `scipy.spatial.distance.cosine` if preferred — the tool already has `sklearn`.
+   f. For each unattributed passage, if its best semantic score >= `threshold`, create a `Match` with `method="semantic"`, `score=round(best_score, 4)`, and move it from `unattributed` to `matched`.
+   g. Passages failing both TF-IDF and semantic remain in `unattributed` with their **TF-IDF best-failed score unchanged**. The semantic score is used for attribution decision only; the float in the tuple stays the TF-IDF score.
+3. Do **not** silently fall back to TF-IDF-only if the import fails. The typed error must propagate to the user.
+4. Do **not** run semantic on passages that already passed TF-IDF. Semantic is a second pass on failures only (AD-02).
 
 **Verification:**
 ```
@@ -106,7 +103,7 @@ Then run:
 ```
 pytest -x
 ```
-All 43 existing tests must still pass (semantic flag is False by default).
+All 43 existing tests must still pass (semantic flag defaults to False, so the new branch is unreachable in legacy tests).
 
 ---
 
@@ -146,18 +143,28 @@ Optional flags:
 Implementation requirements:
 
 1. Use `argparse` from the standard library.
-2. `--inputs` is required (at least one file). Error clearly if missing.
-3. Call `tracer.trace()` with the parsed arguments.
-4. Call `reporter.render()` with the returned `TraceResult` and `Verdict`.
-5. If `--strict` is set and `verdict.status == "DRIFT"`, override to
+2. Wrap CLI execution logic in a `main()` function. Call it under `if __name__ == "__main__": main()`.
+   Do not execute `argparse.parse_args()` or `sys.exit()` at module import time.
+3. `--inputs` must accept one or more file paths. Do **not** use `required=True` in argparse
+   for `--inputs`, because argparse's built-in missing-argument error calls `sys.exit(2)` on Windows,
+   which collides with BLOCKED (exit 2). Instead:
+   - Define `--inputs` with `nargs="+"` (or `"*"`) so argparse parses the list without raising.
+   - After `parse_args()`, manually validate: if `args.inputs` is empty or None,
+     print `"error: --inputs is required
+"` to `sys.stderr` and call `sys.exit(1)`.
+4. Call `tracer.trace()` with the parsed arguments in this exact order:
+   `trace(output_file=args.output_file, input_files=args.inputs, stage=args.stage,
+   threshold=args.threshold, semantic=args.semantic)`.
+5. Call `reporter.render()` with the returned `TraceResult` and `Verdict`.
+6. If `--strict` is set and `verdict.status == "DRIFT"`, override to
    `BLOCKED` with `exit_code=2`.
-6. If `--report` is provided, write the markdown string to that file path.
+7. If `--report` is provided, write the markdown string to that file path.
    Otherwise, print to stdout.
-7. Exit with the final exit code (`0`, `1`, or `2`).
-8. Do **not** resolve paths to absolute before passing to `tracer.trace()`.
+8. Exit with the final exit code (`0`, `1`, or `2`).
+9. Do **not** resolve paths to absolute before passing to `tracer.trace()`.
    Preserve the exact strings the user provided to maintain AD-07 (relative
-   paths in reports). See Risk R-3 below.
-9. Help text must document the three exit codes: 0=CLEAN, 1=DRIFT, 2=BLOCKED.
+   paths in reports).
+10. Help text must document the three exit codes: 0=CLEAN, 1=DRIFT, 2=BLOCKED.
 
 **Verification:**
 ```
@@ -170,8 +177,10 @@ Must complete without error and show all flags.
 ## Step 4.4 — `tests/test_cli.py`
 
 **Action:** Create `tests/test_cli.py`. Use `subprocess.run` to invoke
-`python sem_debug.py` with fixture paths. No direct imports of `tracer` or
-`reporter` — test the CLI as a black-box process.
+`sys.executable` (not the string `"python"`) followed by `"sem_debug.py"`,
+to ensure the subprocess runs in the same virtual environment as the test process.
+
+No direct imports of `tracer` or `reporter` — test the CLI as a black-box process.
 
 Tests:
 
@@ -216,8 +225,8 @@ Invoke with `--semantic`, `output_draft.md`, and both inputs.
 
 **test_cli_no_inputs_error**
 Invoke without `--inputs`.
-- Assert `returncode != 0`.
-- Assert stderr or stdout contains an error about missing inputs.
+- Assert `returncode == 1` (must NOT be 2; see Step 4.3 requirement 10).
+- Assert stderr contains an error about missing inputs.
 
 **Verification:**
 ```
@@ -280,11 +289,11 @@ Expect:
 
 ---
 
-## Phase 4 Risks (from Phase 3 vetting — monitor during build)
+## Phase 4 Risks (monitor during build)
 
 | ID | Risk | Mitigation in this plan |
 |---|---|---|
-| R-3 | Absolute paths in `source_file` if CLI receives absolute paths | CLI must pass paths exactly as received (Step 4.3, item 8). `parser.py` will store whatever string is passed. Test with relative paths only; absolute path behavior is out of scope for MVP. |
+| R-3 | Absolute paths in `source_file` if CLI receives absolute paths | CLI passes paths exactly as received (Step 4.3, item 9). `parser.py` stores whatever string is passed. Test with relative paths only; absolute path behavior is out of scope for MVP. |
 | R-4 | Missing `requirements.txt` | Step 4.0 creates it. Step 4.2 creates `requirements-semantic.txt`. Both must exist at exit gate. |
 
 ---
