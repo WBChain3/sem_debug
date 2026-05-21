@@ -1,0 +1,1 @@
+This is a single prose paragraph with no headers and no code blocks. It contains enough text to be meaningfully attributed to an input source. The quick brown fox jumps over the lazy dog several times before settling down for the evening.
