@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from models import Verdict
 from reporter import render
 from tracer import trace
 
@@ -50,8 +51,7 @@ def main() -> None:
     )
 
     if args.strict and verdict.status == "DRIFT":
-        verdict.status = "BLOCKED"
-        verdict.exit_code = 2
+        verdict = Verdict(status="BLOCKED", exit_code=2)
 
     report = render(trace_result, verdict)
 

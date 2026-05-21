@@ -189,3 +189,54 @@ Steps 3.0–3.4 done. 43/43 tests passing.
 - test_reporter.py: 18 tests covering headers, sections, quoted text, en dash, score formatting, verdict block, presence/absence conditionals
 - No modifications to matcher.py, parser.py, or models.py during Phase 3 execution (models.py was updated in pre-Phase 3 surgical fix only).
 Next: Phase 4 — CLI, semantic extension, integration. See PHASE4_NS.md.
+
+---
+
+## Session 3 — Phase 4 Complete
+
+### AD-19 — Optional sentence-transformers imported lazily inside matcher function body
+**Decision:** `sentence_transformers` is imported inside `match_passages()`, inside the `if semantic:` branch, not at module top level. If the import fails, `ImportError` is raised with a user-facing install instruction.
+**Reason:** `sentence-transformers` is not installed in the base environment (it is only listed in `requirements-semantic.txt`). A top-level import would crash module load for every process — including the 43 existing tests that never touch the semantic path. Keeping the dependency optional requires the module to be importable without it.
+**Closes:** CB-1 from Phase 4 pre-build vetting. Top-level import would have broken all Phase 1–3 tests.
+
+---
+
+### AD-20 — Verdict immutability at CLI boundary
+**Decision:** When `sem_debug.py` promotes DRIFT to BLOCKED, it creates a new `Verdict(status="BLOCKED", exit_code=2)` instead of mutating the existing object.
+**Reason:** `Verdict` is a mutable dataclass. Mutating it in-place leaks the CLI layer's policy decision into the library object, which `tracer.trace()` also holds a reference to. Creating a new object preserves the library contract while allowing the CLI to enforce policy.
+**Closes:** HI-1 from MVP_VET.md. Side-effect leak bug.
+
+---
+
+### AD-21 — Argparse manual validation to reserve exit code 2
+**Decision:** `--inputs` is never marked `required=True` in argparse. Instead, it is parsed normally and manually validated after `parse_args()`. Empty `--inputs` prints to stderr and calls `sys.exit(1)`.
+**Reason:** argparse's built-in missing-argument handler calls `sys.exit(2)` on Windows, which collides with BLOCKED (exit 2). Manual validation guarantees exit 1 for argument errors, keeping exit 2 exclusively for `--strict` / BLOCKED.
+**Closes:** CB-2 from Phase 4 pre-build vetting.
+
+---
+
+### AD-22 — CLI entry point wrapped in main() with standard guard
+**Decision:** `sem_debug.py` exposes all CLI logic inside `main()` and calls it only under `if __name__ == "__main__": main()`. No `sys.exit()` or `argparse.parse_args()` executes at import time.
+**Reason:** Preventing module-level side effects keeps `sem_debug.py` import-safe for integration tests, coverage tools, or programmatic reuse without killing the interpreter.
+**Closes:** MI-2 from Phase 4 vetting report.
+
+---
+
+### AD-23 — Exit codes documented in CLI help epilog
+**Decision:** `ArgumentParser` receives an `epilog` containing the exact exit codes: `0=CLEAN, 1=DRIFT, 2=BLOCKED`. This string appears at the bottom of `--help` output.
+**Reason:** The plan (PHASE4_NS_REV.md Step 4.3 item 10) mandates exit-code documentation. Initial implementation omitted the epilog; it was added after vetting flagged the gap. The epilog is the standard argparse placement for supplementary contract text.
+**Closes:** D-1 from Step 4.3 vetting report.
+
+---
+
+## Phase 4 Status: COMPLETE
+Steps 4.0–4.6 done. 51/51 tests passing.
+- `requirements.txt`: `scikit-learn`
+- `matcher.py`: semantic extension with lazy import of `sentence_transformers` (`all-MiniLM-L6-v2`)
+- `requirements-semantic.txt`: `sentence-transformers`, `torch`
+- `sem_debug.py`: CLI entry point with argparse, manual `--inputs` validation, `--strict` promotion, exit-code epilog, `main()` guard
+- `test_cli.py`: 8 subprocess-based black-box tests covering exit codes 0/1/2, stage flag, threshold flag, report file, semantic import fallback, missing-inputs error
+- MVP_VET.md: full codebase review identifying HI-1 (fixed), HI-2, MI-1–5, LI-1–3; safety and architecture checklists completed
+- No modifications to `parser.py`. `matcher.py` changes limited to semantic extension block only.
+
+**Total test count:** 51/51 (Phase 1: 6, Phase 2: 12, Phase 3: 25, Phase 4: 8).
