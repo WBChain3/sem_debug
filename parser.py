@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import pathlib
+
 from models import Passage
 
 
 def parse_file(path: str) -> list[Passage]:
-    import pathlib
-
     filepath = pathlib.Path(path)
     if filepath.stat().st_size == 0:
         return []
@@ -25,8 +25,30 @@ def parse_file(path: str) -> list[Passage]:
                 code_block_ranges[-1] = (code_block_ranges[-1][0], i)
                 in_code_block = False
 
-    def _in_code(idx: int) -> bool:
+    # Identify HTML comment ranges (0-based line indices)
+    comment_ranges: list[tuple[int, int]] = []
+    in_comment = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not in_comment and stripped.startswith("<!--"):
+            comment_start = i
+            if "-->" in stripped:
+                comment_ranges.append((i, i))
+            else:
+                in_comment = True
+                comment_ranges.append((i, i))
+        elif in_comment:
+            if "-->" in stripped:
+                comment_ranges[-1] = (comment_ranges[-1][0], i)
+                in_comment = False
+            else:
+                comment_ranges[-1] = (comment_ranges[-1][0], i)
+
+    def _skipped(idx: int) -> bool:
         for start, end in code_block_ranges:
+            if start <= idx <= end:
+                return True
+        for start, end in comment_ranges:
             if start <= idx <= end:
                 return True
         return False
@@ -37,7 +59,7 @@ def parse_file(path: str) -> list[Passage]:
     cur_start: int | None = None
 
     for i, line in enumerate(lines):
-        if _in_code(i):
+        if _skipped(i):
             if cur_lines:
                 blocks.append((cur_start, i - 1, cur_lines))
                 cur_lines = []
