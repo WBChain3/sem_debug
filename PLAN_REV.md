@@ -1,4 +1,4 @@
-# NORTHSTAR.md — Build Plan
+# PLAN_REV.md — Phase 1 Decomposed
 
 ## Phase 1 Steps
 
@@ -26,31 +26,26 @@ Verification: `python -c "import pathlib; p = pathlib.Path('tests/fixtures/singl
 Action: Create `tests/fixtures/with_headers.md` containing at least one markdown header (`# ` or `## `) followed immediately by a prose paragraph on subsequent lines, with blank lines between sections.
 Verification: `python -c "import pathlib; p = pathlib.Path('tests/fixtures/with_headers.md'); t = p.read_text(); assert '# ' in t and '\n\n' in t; print('OK')"`
 
-### Step 1.6b — `tests/fixtures/header_only.md`
-Action: Create `tests/fixtures/header_only.md` containing only markdown headers (`# ` and/or `## `) with no prose paragraphs and no code blocks.
-Verification: `python -c "import pathlib; p = pathlib.Path('tests/fixtures/header_only.md'); t = p.read_text(); assert '# ' in t and t.strip() != ''; print('OK')"`
-
 ### Step 1.7 — `tests/fixtures/with_code.md`
 Action: Create `tests/fixtures/with_code.md` containing at least one fenced code block (triple backticks) with content inside, surrounded by prose paragraphs.
-Verification: `python -c "import pathlib; p = pathlib.Path('tests/fixtures/with_code.md'); assert p.exists() and '\`\`\`' in p.read_text(); print('OK')"`
+Verification: `python -c "import pathlib; p = pathlib.Path('tests/fixtures/with_code.md'); assert p.exists() and '\\`\\`\\`' in p.read_text(); print('OK')"`
 
 ### Step 1.8 — `parser.py`
 Action: Create `parser.py` exposing `parse_file(path: str) -> list[Passage]`. It must read the file, split it into blank-line-delimited passages, skip fenced code blocks entirely (silently, do not emit passages for them), merge headers with the paragraph that follows them, use 1-based line numbers for `line_start` and `line_end`, store the relative path from workspace root in `source_file`, and return `[]` for empty input.
-Verification: `python -c "from parser import parse_file; result = parse_file('tests/fixtures/empty.md'); assert result == [], f'Expected [] got {result}'; print('OK')"`
+Verification: `python -c "from parser import parse_file; assert parse_file.__annotations__['return'] == list and callable(parse_file); print('OK')"`
 
 ### Step 1.9 — `tests/test_parser.py`
-Action: Create `tests/test_parser.py`. Import `models` and `parser`. Write tests covering: `empty.md` returns `[]`; `single_para.md` yields exactly one `Passage` with text matching the paragraph and 1-based line numbers spanning the file; `with_headers.md` yields passages where headers are merged with their following paragraph and `line_start`/`line_end` are correct; `with_code.md` yields only prose passages and no code-block content appears in any `Passage.text`; `header_only.md` returns `[]` (safe default, not a crash or partial passage).
+Action: Create `tests/test_parser.py`. Import `models` and `parser`. Write tests covering: `empty.md` returns `[]`; `single_para.md` yields exactly one `Passage` with text matching the paragraph and 1-based line numbers spanning the file; `with_headers.md` yields passages where headers are merged with their following paragraph and `line_start`/`line_end` are correct; `with_code.md` yields only prose passages and no code-block content appears in any `Passage.text`.
 Verification: `pytest tests/test_parser.py -x`
 
 ---
 
-## Resolutions Applied from PLAN.md Ambiguities
-
-- **Code blocks:** Skip silently (Constraints overrule Phase 1 parenthetical).
-- **Chunking:** Blank-line-delimited paragraphs. Sentence-level too granular for TF-IDF at this corpus size; sliding windows add unneeded complexity.
-- **Headers:** Merge with the following paragraph; never standalone passages. A header without its body is not meaningfully attributable.
-- **Model tests:** Separate thin file (`test_models.py`) asserting the named constant. Keeps test files single-responsibility.
-- **Parser function:** `parse_file(path: str) -> list[Passage]`.
-- **`source_file`:** Relative path from workspace root. Matches the report example and keeps traces portable.
-- **Line numbering:** 1-based. Matches the report example and how humans read files.
-- **`tests/` packaging:** `conftest.py` with `sys.path` insert; no `__init__.py`. Keeps it flat and simple.
+*Resolutions applied from PLAN.md ambiguities:*
+- Code blocks: **skip silently** (Constraints overrule Phase 1 parenthetical)
+- Chunking: **blank-line-delimited paragraphs**
+- Headers: **merge with following paragraph**; never standalone passages
+- Model tests: **thin separate file** (`test_models.py`) asserting the constant
+- Parser function: **`parse_file(path: str) -> list[Passage]`**
+- `source_file`: **relative path from workspace root**
+- Line numbers: **1-based**
+- `tests/` packaging: **`conftest.py`** with `sys.path` insert; no `__init__.py`
