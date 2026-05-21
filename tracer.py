@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from models import DEFAULT_THRESHOLD, Match, Passage, TraceResult, Verdict
+from models import DEFAULT_THRESHOLD, Passage, TraceResult, Verdict
 from matcher import match_passages
 from parser import parse_file
 
@@ -13,7 +13,7 @@ def trace(
     semantic: bool = False,
 ) -> tuple[TraceResult, Verdict]:
     output_passages = parse_file(output_file)
-    input_passages: list[Passage] = []
+    input_passages: list[Passage] = []  # retained: Passage used in type annotation on line 16; removing breaks mypy
     for path in input_files:
         input_passages.extend(parse_file(path))
 
