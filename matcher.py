@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pathlib
-
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -23,7 +21,7 @@ def match_passages(
     try:
         input_tfidf = vectorizer.fit_transform(input_texts)
         output_tfidf = vectorizer.transform(output_texts)
-    except ValueError:
+    except ValueError:  # sklearn ValueError on empty vocabulary — never bare Exception
         return [None] * len(output_passages)
 
     similarity = cosine_similarity(output_tfidf, input_tfidf)
