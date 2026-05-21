@@ -30,8 +30,8 @@ def trace(
     )
 
     if len(unattributed) == 0:
-        verdict = Verdict(status="CLEAN", exit_code=0, summary="CLEAN")
+        verdict = Verdict(status="CLEAN", exit_code=0)
     else:
-        verdict = Verdict(status="DRIFT", exit_code=1, summary="DRIFT")
+        verdict = Verdict(status="DRIFT", exit_code=1)
 
     return trace_result, verdict
