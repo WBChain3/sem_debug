@@ -140,4 +140,52 @@ Steps 2.0–2.8 done. All tests passing.
 - Two fixes from RESEARCH vet: dead pathlib import removed, ValueError documented
 - One contract violation: RESEARCH wrote fixture files (steps 2.1–2.4) instead
   of specifying inline. Files were correct and kept. Violation logged.
-Next: Phase 3 — tracer.py + reporter.py
+
+---
+
+## Session 2 — Phase 3 Complete
+
+### AD-14 — TraceResult and Verdict signatures aligned to matcher contract
+**Decision:** `TraceResult.unattributed` changed from `list[Passage]` to `list[tuple[Passage, float]]`. `Verdict.summary` field removed entirely.
+**Reason:** `matcher.py` already returned `list[tuple[Passage, float]]` per AD-12, but `models.py` still declared `list[Passage]`. This created a structural mismatch that blocked `tracer.py` from assembling a `TraceResult` without violating its own type annotation. `summary` was removed because the Phase 3 spec for `Verdict` only defines `status` and `exit_code`; no downstream consumer used it, and it forced `tracer.py` to invent a string value not present in the plan.
+**Closes:** CB-1 and CB-2 from pre-Phase 3 vetting report.
+
+---
+
+### AD-15 — BLOCKED is a CLI-only verdict promotion
+**Decision:** `tracer.py` computes only `CLEAN` (exit 0) and `DRIFT` (exit 1). `BLOCKED` (exit 2) is computed by `sem_debug.py` when `--strict` is present. There is no natural count/ratio threshold for `BLOCKED` independent of `--strict`.
+**Reason:** Library layer should be simple and deterministic. Policy decisions like `--strict` belong at the CLI boundary where user intent is parsed. Keeping `BLOCKED` out of `tracer.py` preserves the separation between analysis (what the text says) and policy (what the pipeline should do about it).
+**Closes:** NORTHSTAR2.md ambiguity #3 and #10.
+
+---
+
+### AD-16 — JSON output deferred out of MVP
+**Decision:** The `--json` flag is not implemented in Phase 4. CLI outputs markdown only.
+**Reason:** `PHASE3_NS.md` specifies a single markdown report format with exact headers, separators, and en-dash rules. Adding JSON would require a parallel formatter, schema maintenance, and additional test surface with no established user demand. If needed later, it is a feature addition, not a plan gap.
+**Closes:** NORTHSTAR2.md ambiguity #2.
+
+---
+
+### AD-17 — Semantic second-pass stays inside matcher.py
+**Decision:** When `semantic=True`, the TF-IDF → semantic fallback chain is entirely inside `match_passages`. `tracer.trace` passes the flag through but never branches on it.
+**Reason:** Centralizes matching logic in one module. `tracer.py` remains a thin orchestrator. Prevents semantic-specific code (model loading, encoding, cosine similarity) from leaking into the orchestration layer. Matches the design principle that `tracer` wires modules; `matcher` implements matching.
+**Closes:** NORTHSTAR2.md ambiguity #6.
+
+---
+
+### AD-18 — source_file relative path enforced by caller convention
+**Decision:** `parser.py` stores `str(filepath)` exactly as received. The relative-path contract (AD-07) is upheld by CLI and tests passing relative paths only. `parser.py` does not normalize or rewrite user-provided paths.
+**Reason:** A low-level file reader should not silently change the strings it receives. Path policy belongs at the entry point (`sem_debug.py`), which must not resolve to absolute before calling `tracer.trace`. Real-world absolute-path usage is out of scope for MVP; the contract is documented and tested with relative paths.
+**Closes:** R-3 from Phase 3 vetting report.
+
+---
+
+## Phase 3 Status: COMPLETE
+Steps 3.0–3.4 done. 43/43 tests passing.
+- output_clean.md: 2 paragraphs, all TF-IDF scores > 0.35
+- tracer.py: trace() with stage, threshold, semantic passthrough
+- reporter.py: render() matching Report Format Reference exactly
+- test_tracer.py: 6 tests covering drift, clean, stage, best-failed score, empty inputs, path preservation
+- test_reporter.py: 18 tests covering headers, sections, quoted text, en dash, score formatting, verdict block, presence/absence conditionals
+- No modifications to matcher.py, parser.py, or models.py during Phase 3 execution (models.py was updated in pre-Phase 3 surgical fix only).
+Next: Phase 4 — CLI, semantic extension, integration. See PHASE4_NS.md.
