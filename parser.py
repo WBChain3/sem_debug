@@ -31,7 +31,6 @@ def parse_file(path: str) -> list[Passage]:
     for i, line in enumerate(lines):
         stripped = line.strip()
         if not in_comment and stripped.startswith("<!--"):
-            comment_start = i
             if "-->" in stripped:
                 comment_ranges.append((i, i))
             else:

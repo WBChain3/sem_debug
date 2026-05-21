@@ -5,8 +5,6 @@ import sys
 import subprocess
 import pathlib
 
-import pytest
-
 
 def _run(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
