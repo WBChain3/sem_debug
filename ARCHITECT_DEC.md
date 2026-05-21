@@ -116,6 +116,20 @@ non-attributable content and add noise to calibration tests.
 
 ---
 
+AD-12 — Unattributed passages carry best-failed score as tuple, not model field
+Decision: match_passages returns tuple[list[Match], list[tuple[Passage, float]]]. The float is the highest TF-IDF score the passage achieved against any input passage in that run, even though it did not clear the threshold. The score is not stored on the Passage model.
+Reason: Attaching best_score to Passage (Option A) would conflate parse artifacts with matcher output. If matching becomes multi-pass or learned — reranking layer, CNN scorer, fine-tuned cross-encoder — a single float on Passage becomes ambiguous: which pass produced it, against which corpus, with which model version. Keeping the score in the return tuple means it exists only in the context of the matching event that produced it. The model layer stays clean regardless of how the matching pipeline evolves.
+Closes: MI-2 from Phase 2 vetting report. Option A/B decision from session 2.
+
+---
+
+AD-13 — Empty-input early returns yield zero-score tuples, not None sentinels
+Decision: When match_passages is called with an empty input corpus or empty output list, the second return element is [(p, 0.0) for p in output_passages], not [None] * len(output_passages).
+Reason: Under the new return type, None sentinels are structurally illegal. A 0.0 float is semantically correct — no comparison was made, so the best-failed score is zero by definition. All downstream consumers receive a consistent type regardless of whether the corpus was empty or matching simply failed.
+Closes: Edge case surfaced during CB-1 fix, session 2.
+
+---
+
 ## Phase 1 Status: COMPLETE
 6/6 tests passing. No drift. No blockers.
 
