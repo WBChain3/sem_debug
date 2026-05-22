@@ -11,5 +11,5 @@ dependencies = [
 sem_debug = "sem_debug:main"
 
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.backends._legacy:_Backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
