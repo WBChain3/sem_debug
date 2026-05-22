@@ -1,0 +1,15 @@
+[project]
+name = "sem_debug"
+version = "0.1.0"
+description = "Attribution tool for output passages against input sources"
+requires-python = ">=3.8"
+dependencies = [
+    "scikit-learn",
+]
+
+[project.scripts]
+sem_debug = "sem_debug:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.backends._legacy:_Backend"
