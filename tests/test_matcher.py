@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from matcher import match_passages
-from models import Match, Passage
+from sem_debug.matcher import match_passages
+from sem_debug.models import Match, Passage
 
 
 def _passage(text: str) -> Passage:

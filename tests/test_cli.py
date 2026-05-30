@@ -8,7 +8,7 @@ import pathlib
 
 def _run(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [sys.executable, "sem_debug.py", *args],
+        [sys.executable, "-m", "sem_debug.cli", *args],
         capture_output=True,
         text=True,
     )

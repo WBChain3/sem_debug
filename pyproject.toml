@@ -8,7 +8,10 @@ dependencies = [
 ]
 
 [project.scripts]
-sem_debug = "sem_debug:main"
+sem_debug = "sem_debug.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sem_debug"]
 
 [build-system]
 requires = ["hatchling"]

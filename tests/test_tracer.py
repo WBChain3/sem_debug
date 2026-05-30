@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import os
 
-from models import DEFAULT_THRESHOLD, Verdict
-from tracer import trace
+from sem_debug.models import DEFAULT_THRESHOLD, Verdict
+from sem_debug.tracer import trace
 
 
 def test_drift_case():

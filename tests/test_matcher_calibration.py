@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from matcher import match_passages
-from models import DEFAULT_THRESHOLD
-from parser import parse_file
+from sem_debug.matcher import match_passages
+from sem_debug.models import DEFAULT_THRESHOLD
+from sem_debug.parser import parse_file
 
 
 def test_zone1_high_overlap_above_threshold():

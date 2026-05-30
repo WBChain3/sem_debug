@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from models import Match, Passage, TraceResult, Verdict
-from reporter import render
+from sem_debug.models import Match, Passage, TraceResult, Verdict
+from sem_debug.reporter import render
 
 PASSAGE_OUT_1 = Passage(
     text="Models are increasingly deployed in quantized form.",

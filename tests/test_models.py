@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from models import DEFAULT_THRESHOLD
+from sem_debug.models import DEFAULT_THRESHOLD
 
 
 def test_default_threshold():
