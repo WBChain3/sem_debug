@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from models import DEFAULT_THRESHOLD, Passage, TraceResult, Verdict
-from matcher import match_passages
-from parser import parse_file
+from .models import DEFAULT_THRESHOLD, Passage, TraceResult, Verdict
+from .matcher import match_passages
+from .parser import parse_file
 
 
 def trace(

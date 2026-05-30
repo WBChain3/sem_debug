@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from models import TraceResult, Verdict
+from .models import TraceResult, Verdict
 
 
 def render(trace_result: TraceResult, verdict: Verdict) -> str:

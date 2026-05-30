@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 
-from models import Passage
+from .models import Passage
 
 
 def parse_file(path: str) -> list[Passage]:

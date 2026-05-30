@@ -3,7 +3,7 @@ from __future__ import annotations
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from models import DEFAULT_THRESHOLD, Match, Passage
+from .models import DEFAULT_THRESHOLD, Match, Passage
 
 
 def match_passages(
