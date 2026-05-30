@@ -241,6 +241,7 @@ AD-26 — Task 4 smoke test run on real ICM pipeline content
 Decision: Real-content smoke test executed inside a cloned ICM script-to-animation workspace. Input: RESEARCH.md (operator-written). Output: semdebug-script.md (DeepSeek via Stage 01 contract). All 7 script passages attributed to source. Metadata header (brand vault content) correctly flagged unattributed at score 0.08. No crashes, no false negatives on real content.
 Reason: Fixture-only validation is insufficient. Real content surfaces chunking behavior, threshold calibration, and report readability under realistic conditions.
 Closes: Task 4 observational gate.
+
 ---
 
 ## Phase 4 Status: COMPLETE
