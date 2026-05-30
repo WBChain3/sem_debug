@@ -227,6 +227,20 @@ Next: Phase 4 — CLI, semantic extension, integration. See PHASE4_NS.md.
 **Reason:** The plan (PHASE4_NS_REV.md Step 4.3 item 10) mandates exit-code documentation. Initial implementation omitted the epilog; it was added after vetting flagged the gap. The epilog is the standard argparse placement for supplementary contract text.
 **Closes:** D-1 from Step 4.3 vetting report.
 
+AD-24 — Package refactored into proper installable structure
+Decision: All source modules moved from flat workspace root into sem_debug/ package directory. Imports converted to explicit relative. Entry point updated to sem_debug.cli:main. pyproject.toml updated with [tool.hatch.build.targets.wheel] packages = ["sem_debug"].
+Reason: Flat module layout caused pip install . to package only sem_debug.py, leaving all sibling modules behind. Post-install sem_debug --help crashed with ModuleNotFoundError: No module named 'models'. Package structure is the standard fix.
+Closes: Task 3 install block (commit c22579f).
+
+AD-25 — Semantic rescue validated with real embeddings
+Decision: --semantic flag graduates from experimental. Zone 2 paraphrase fixture scored 0.4532 against all-MiniLM-L6-v2 embeddings, above the 0.35 threshold. Passage appeared in attributed output with method=semantic.
+Reason: Task 2 required a score on record before shipping. Threshold passed. Caveat removed from KNOWN_LIMITATIONS.md.
+Closes: Task 2 validation gate.
+
+AD-26 — Task 4 smoke test run on real ICM pipeline content
+Decision: Real-content smoke test executed inside a cloned ICM script-to-animation workspace. Input: RESEARCH.md (operator-written). Output: semdebug-script.md (DeepSeek via Stage 01 contract). All 7 script passages attributed to source. Metadata header (brand vault content) correctly flagged unattributed at score 0.08. No crashes, no false negatives on real content.
+Reason: Fixture-only validation is insufficient. Real content surfaces chunking behavior, threshold calibration, and report readability under realistic conditions.
+Closes: Task 4 observational gate.
 ---
 
 ## Phase 4 Status: COMPLETE
