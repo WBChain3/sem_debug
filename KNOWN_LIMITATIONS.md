@@ -17,3 +17,7 @@ The `--semantic` flag requires `sentence-transformers` and downloads the `all-Mi
 ## Attribution Is Best-Match, Not Causal
 
 Output passages are linked to their highest-scoring input passage. When multiple inputs overlap, the tool picks one winner. It cannot distinguish faithful reproduction from accidental lexical overlap, and it cannot prove the agent actually read the input passage before writing the output. Attribution is heuristic proximity, not causal provenance.
+
+## Semantic Validation Threshold
+
+The `--semantic` path uses a cosine-similarity threshold of 0.45 to decide whether an output passage is attributable to a given input zone. The current validated score is 0.4532 (Zone 2 attributed, threshold passed). This threshold is a single scalar — it does not adapt per zone, per model, or per document length. Zones with naturally lower lexical overlap with the output may fall below the bar even when the agent genuinely used them. Zone-level tuning is not yet implemented.
