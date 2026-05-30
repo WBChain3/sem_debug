@@ -20,7 +20,7 @@ Requires Python 3.8+. For semantic matching:
 pip install -r requirements-semantic.txt
 ```
 
-![description](assets\sem-Debug4.PNG)
+![description](assets/sem-Debug4.PNG)
 
 ## Usage
 
