@@ -255,3 +255,42 @@ Steps 4.0–4.6 done. 51/51 tests passing.
 - No modifications to `parser.py`. `matcher.py` changes limited to semantic extension block only.
 
 **Total test count:** 51/51 (Phase 1: 6, Phase 2: 12, Phase 3: 25, Phase 4: 8).
+
+---
+
+## Session 4 — v2 Complete (Phases 1–4)
+
+### AD-27 — Frozen JSON schema as public subprocess contract
+**Decision:** `TraceResult.to_dict()` shape is locked by `tests/test_json_contract.py`. The dict contains exactly 6 top-level keys: `status`, `exit_code`, `stage`, `threshold`, `attributed`, `unattributed`. No extra keys may be added without updating the contract test and the CLI `--help` epilog.
+**Reason:** `research_loop` calls `sem_debug` via subprocess and parses the JSON output. Any schema drift breaks the integration silently. The contract test fails CI if `to_dict()` changes shape, forcing explicit coordination.
+**Closes:** HI-1 from Phase 1 vet (field name drift), HI-2 from Phase 3 vet (cross-repo `flagged_passages` mismatch).
+
+---
+
+### AD-28 — Real `passage_index` via identity mapping through `output_passages`
+**Decision:** `TraceResult` carries an `output_passages: list[Passage] | None` field. `to_dict()` maps `id(Passage)` against this list to emit the original file-level index, not a synthetic sequential counter.
+**Reason:** Synthetic sequential indices (0, 1, 2...) are fragile — they change if passages are filtered or reordered. The original index in the output file is stable and meaningful to a human reading the trace. Identity mapping is safe because `match_passages` returns the same `Passage` instances that `tracer.py` parsed.
+**Closes:** MI-1 from Phase 1 vet (`source_passage_index` naming), CB-1 from Phase 1 model alignment.
+
+---
+
+### AD-29 — Section-aware input loading via CONTEXT.md, H2-only, path-relative-to-context_md.parent
+**Decision:** `tracer.py` accepts an optional `context_md: Path | None`. When present, `workspace_parser.read_context_md()` extracts the Inputs table (H2 `## Inputs`, first markdown table below it). Each declared source is resolved relative to `context_md.parent` (the stage/workspace directory). If a `Section` column is present, only that H2 section is read via `parse_file_sections()`.
+**Reason:** ICM workspaces organize inputs by section. Loading whole files wastes matcher cycles on irrelevant sections and risks false negatives when unattributed content comes from a section that was never meant to be read. H2-only section boundaries keep the heuristic simple and deterministic. Path resolution against `context_md.parent` is correct because CONTEXT.md lives in the workspace root, while `output_file` may be in a `fixtures/` or `outputs/` subdirectory.
+**Closes:** Phase 2 core deliverable. AD-05 (header merging) applies within sections exactly as globally.
+
+---
+
+## v2 Status: COMPLETE
+Phases 1–4 done. 85/85 tests passing.
+- `models.py`: `to_dict()` with identity-mapped `passage_index`, `source_line_start`, `Verdict.to_dict()`
+- `reporter.py`: `render_json()` wrapper
+- `cli.py`: `--format json`, `--json` shorthand, `--context-md`, `--report` for both formats, JSON schema epilog
+- `tracer.py`: `context_md` parameter, path resolution relative to `context_md.parent`
+- `parser.py`: `parse_file_sections()` with H2 state machine
+- `workspace_parser.py`: `read_context_md()` with YAML frontmatter skip, markdown table parsing, fault-tolerant (never raises)
+- `tests/test_json_contract.py`: 5 frozen contract tests
+- `tests/test_calibration_sections.py`: 4 fixture-based integration tests
+- `tests/fixtures/context_workspace/`: 5-file ICM workspace for section calibration
+
+**Total test count:** 85/85 (Phase 1: 7, Phase 2: 12, Phase 3: 5, Phase 4: 4, plus 57 existing).
