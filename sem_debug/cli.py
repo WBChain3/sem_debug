@@ -3,15 +3,25 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .models import Verdict
-from .reporter import render
+from .models import DEFAULT_THRESHOLD, Verdict
+from .reporter import render, render_json
 from .tracer import trace
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="sem_debug \u2014 attribute output passages to input sources",
-        epilog="Exit codes: 0=CLEAN, 1=DRIFT, 2=BLOCKED",
+        epilog="Exit codes: 0=CLEAN, 1=DRIFT, 2=BLOCKED\n"
+        "\n"
+        "JSON output schema (sem_debug --format json):\n"
+        '  {\n'
+        '    "status": "CLEAN|DRIFT|BLOCKED",\n'
+        '    "exit_code": 0|1|2,\n'
+        '    "stage": "string",\n'
+        '    "threshold": float,\n'
+        '    "attributed": [...],\n'
+        '    "unattributed": [...]\n'
+        '  }',
     )
     parser.add_argument("output_file", help="Path to the output markdown file")
     parser.add_argument(
@@ -35,12 +45,27 @@ def main() -> None:
         default=False,
         help="Promote DRIFT to BLOCKED (exit code 2) when unattributed passages exist",
     )
+    parser.add_argument(
+        "--format",
+        default="markdown",
+        choices=["markdown", "json"],
+        help="Output format (default: markdown)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Shorthand for --format json",
+    )
 
     args = parser.parse_args()
 
     if not args.inputs:
         print("error: --inputs is required", file=sys.stderr)
         sys.exit(1)
+
+    # --json flag overrides --format
+    output_format = "json" if args.json else args.format
 
     trace_result, verdict = trace(
         output_file=args.output_file,
@@ -53,7 +78,10 @@ def main() -> None:
     if args.strict and verdict.status == "DRIFT":
         verdict = Verdict(status="BLOCKED", exit_code=2)
 
-    report = render(trace_result, verdict)
+    if output_format == "json":
+        report = render_json(trace_result, verdict, args.threshold)
+    else:
+        report = render(trace_result, verdict)
 
     if args.report:
         with open(args.report, "w", encoding="utf-8") as f:

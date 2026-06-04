@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from .models import TraceResult, Verdict
+import json
+
+from .models import DEFAULT_THRESHOLD, TraceResult, Verdict
 
 
 def render(trace_result: TraceResult, verdict: Verdict) -> str:
@@ -73,3 +75,11 @@ def render(trace_result: TraceResult, verdict: Verdict) -> str:
     parts.append(f"Exit code: {verdict.exit_code}")
 
     return "\n".join(parts)
+
+
+def render_json(trace_result: TraceResult, verdict: Verdict, threshold: float = DEFAULT_THRESHOLD) -> str:
+    """Return a JSON string representation of the trace result.
+
+    Uses TraceResult.to_dict() under the hood. Indent=2 for readability.
+    """
+    return json.dumps(trace_result.to_dict(verdict, threshold), indent=2)

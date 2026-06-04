@@ -27,6 +27,7 @@ def trace(
         input_files=input_files,
         matches=matches,
         unattributed=unattributed,
+        output_passages=output_passages,
     )
 
     if len(unattributed) == 0:
