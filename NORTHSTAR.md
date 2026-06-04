@@ -28,7 +28,7 @@ def to_dict(self) -> dict:
 
     Keys: verdict.status, verdict.exit_code, stage, threshold,
           attributed (list of dicts), unattributed (list of dicts).
-    Each match dict contains: passage_index, source_file, source_passage_index,
+    Each match dict contains: passage_index, source_file, source_line_start,
     score, method ("tfidf" | "semantic").
     """
 ```
@@ -53,7 +53,7 @@ def to_dict(self) -> dict:
 
     Keys: verdict.status, verdict.exit_code, stage, threshold,
           attributed (list of dicts), unattributed (list of dicts).
-    Each match dict contains: passage_index, source_file, source_passage_index,
+    Each match dict contains: passage_index, source_file, source_line_start,
     score, method ("tfidf" | "semantic").
     """
 
@@ -77,7 +77,7 @@ def to_dict(self) -> dict:
     {
       "passage_index": 0,
       "source_file": "input_source_alpha.md",
-      "source_passage_index": 1,
+      "source_line_start": 1,
       "score": 0.4821,
       "method": "tfidf"
     }
@@ -343,7 +343,7 @@ JSON output schema (--format json or --json):
       {
         "passage_index": int,
         "source_file": "string",
-        "source_passage_index": int,
+        "source_line_start": int,
         "score": float,
         "method": "tfidf|semantic"
       }
@@ -375,7 +375,7 @@ this test and the help epilog.
 
 1. `test_trace_result_dict_keys` — Build a `TraceResult` with 1 attributed, 1 unattributed. Call `.to_dict()`. Assert top-level keys: `status`, `exit_code`, `stage`, `threshold`, `attributed`, `unattributed`. Assert no extra keys.
 
-2. `test_attributed_match_dict_keys` — Assert each attributed dict has: `passage_index`, `source_file`, `source_passage_index`, `score`, `method`. Assert `method` is `"tfidf"` or `"semantic"`. Assert `score` is float (not Decimal, not string).
+2. `test_attributed_match_dict_keys` — Assert each attributed dict has: `passage_index`, `source_file`, `source_line_start`, `score`, `method`. Assert `method` is `"tfidf"` or `"semantic"`. Assert `score` is float (not Decimal, not string).
 
 3. `test_unattributed_dict_keys` — Assert each unattributed dict has: `passage_index`, `best_failed_score`, `text_preview`. Assert `best_failed_score` is float. Assert `text_preview` is string with length <= 80.
 
@@ -393,7 +393,7 @@ this test and the help epilog.
 |---|---|---|
 | 1 | `pytest tests/test_json_contract.py -v` | 5 passing |
 | 2 | `sem_debug --help` | Epilog shows JSON schema description |
-| 3 | `pytest -x` (full suite) | 75 passing (70 + 5 new) |
+| 3 | `pytest -x` (full suite) | 81 passing (76 + 5 new) |
 
 ---
 
@@ -409,8 +409,30 @@ tests/fixtures/context_workspace/
   CONTEXT.md          # frontmatter + Inputs table pointing to 01_intro.md, 02_data.md
   01_intro.md         # H2 "Introduction" with 2 paragraphs
   02_data.md          # H2 "Data" with 2 paragraphs, H2 "Methods" with 1 paragraph
-  output_full.md      # draft output referencing all 5 paragraphs (clean)
-  output_drift.md     # draft output with 1 new paragraph (drift)
+  output_full.md      # draft output referencing only the 4 paragraphs from Introduction + Data (clean)
+  output_drift.md     # draft output with 1 new paragraph not in any declared section (drift)
+```
+
+**`01_intro.md` content:**
+```markdown
+## Introduction
+
+Para 1 text here.
+
+Para 2 text here.
+```
+
+**`02_data.md` content:**
+```markdown
+## Data
+
+Para 3 text here.
+
+Para 4 text here.
+
+## Methods
+
+Para 5 text here (not in Inputs table).
 ```
 
 **`CONTEXT.md` content:**
@@ -433,35 +455,28 @@ models:
 
 #### `tests/test_calibration_sections.py` (new file)
 
-1. `test_section_vs_wholefile_same_verdict` — Run `trace()` with `--context-md` (only "Introduction" and "Data" sections) and without (whole-file). Assert same `verdict.status` on `output_full.md`.
+1. `test_section_vs_wholefile_same_verdict` — Run `trace()` twice on `output_full.md`:
+   - Once with `context_md=CONTEXT.md` (only "Introduction" and "Data" sections loaded)
+   - Once without `context_md`, passing `01_intro.md` and `02_data.md` as `input_files`
+   Assert same `verdict.status == "CLEAN"` both times.
 
-2. `test_section_load_reduces_input_passages` — Run `trace()` with `--context-md` on `02_data.md` (which has "Data" + "Methods" sections, but only "Data" is declared). Assert `len(input_passages)` < whole-file count.
+2. `test_section_load_reduces_input_passages` — Run `trace()` with `context_md=CONTEXT.md` on `output_full.md`. The Inputs table declares only "Introduction" (2 paragraphs) and "Data" (2 paragraphs), while `02_data.md` has an extra "Methods" section (1 paragraph). Assert that the whole-file case includes 5 input passages and the section-filtered case includes 4.
 
-3. `test_drift_detected_with_sections` — Run `trace()` with `--context-md` on `output_drift.md`. Assert `verdict.status == "DRIFT"`.
+3. `test_drift_detected_with_sections` — Run `trace()` with `context_md=CONTEXT.md` on `output_drift.md` (which contains a new paragraph not in any declared section). Assert `verdict.status == "DRIFT"`.
 
-4. `test_semantic_json_combo` — Run `sem_debug output_drift.md --inputs ... --context-md ... --semantic --format json`. Assert valid JSON, `method` field present, `method == "semantic"` for any rescued match.
+4. `test_semantic_json_combo` — Subprocess: `sem_debug output_drift.md --inputs 01_intro.md 02_data.md --context-md CONTEXT.md --semantic --format json`. Assert valid JSON, `method` field present. If semantic matching rescues a low-score match, `method` may be `"semantic"`.
 
 **Test count:** 4 new tests.
 
 ---
 
-#### `tests/test_cli.py` — add new CLI tests
 
-Append to existing `tests/test_cli.py`:
-
-1. `test_cli_format_json` — already in Phase 1 tests. If not added there, add here.
-2. `test_cli_context_md` — subprocess with `--context-md`, assert valid markdown report (default format).
-3. `test_cli_context_md_json_combo` — subprocess with `--context-md --format json`, assert valid JSON.
-
-**Test count:** 3 new tests (if not already covered in Phase 1).
-
----
 
 ### Phase 4 Gates
 
 | Gate | Command / Action | Expected |
 |---|---|---|
-| 1 | `pytest -x` | 79 passing (75 + 4 new, or 75 + 3 if cli tests already counted) |
+| 1 | `pytest -x` | 85 passing (81 + 4 new) |
 | 2 | Section-loaded vs whole-file on fixture workspace | Same verdict, reduced input passage count |
 | 3 | `--semantic --format json` combo | Valid JSON with `method` field |
 | 4 | `--context-md` with malformed file | Does not crash, warning to stderr |
@@ -474,8 +489,8 @@ Append to existing `tests/test_cli.py`:
 |---|---|---|
 | Phase 1 | 7 | 58 |
 | Phase 2 | 12 | 70 |
-| Phase 3 | 5 | 75 |
-| Phase 4 | 4 | 79 |
+| Phase 3 | 5 | 81 |
+| Phase 4 | 4 | 85 |
 
-**Target total: 79 tests.**
+**Target total: 85 tests.**
 

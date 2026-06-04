@@ -14,14 +14,28 @@ def main() -> None:
         description="sem_debug \u2014 attribute output passages to input sources",
         epilog="Exit codes: 0=CLEAN, 1=DRIFT, 2=BLOCKED\n"
         "\n"
-        "JSON output schema (sem_debug --format json):\n"
+        "JSON output schema (--format json or --json):\n"
         '  {\n'
         '    "status": "CLEAN|DRIFT|BLOCKED",\n'
         '    "exit_code": 0|1|2,\n'
         '    "stage": "string",\n'
         '    "threshold": float,\n'
-        '    "attributed": [...],\n'
-        '    "unattributed": [...]\n'
+        '    "attributed": [\n'
+        '      {\n'
+        '        "passage_index": int,\n'
+        '        "source_file": "string",\n'
+        '        "source_line_start": int,\n'
+        '        "score": float,\n'
+        '        "method": "tfidf|semantic"\n'
+        '      }\n'
+        '    ],\n'
+        '    "unattributed": [\n'
+        '      {\n'
+        '        "passage_index": int,\n'
+        '        "best_failed_score": float,\n'
+        '        "text_preview": "string"\n'
+        '      }\n'
+        '    ]\n'
         '  }',
     )
     parser.add_argument("output_file", help="Path to the output markdown file")

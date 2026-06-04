@@ -21,8 +21,10 @@ JSON output schema (--format json or --json):
     "attributed": [
       {
         "passage_index": int,
+'
         "source_file": "string",
-        "source_passage_index": int,
+        "passage_index": int,
+'
         "score": float,
         "method": "tfidf|semantic"
       }
@@ -30,6 +32,7 @@ JSON output schema (--format json or --json):
     "unattributed": [
       {
         "passage_index": int,
+'
         "best_failed_score": float,
         "text_preview": "string"
       }
