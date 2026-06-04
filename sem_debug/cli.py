@@ -81,8 +81,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if not args.inputs:
-        print("error: --inputs is required", file=sys.stderr)
+    if not args.inputs and not args.context_md:
+        print("error: --inputs or --context-md is required", file=sys.stderr)
         sys.exit(1)
 
     # --json flag overrides --format

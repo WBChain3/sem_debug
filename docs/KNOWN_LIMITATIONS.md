@@ -14,6 +14,11 @@ Windows console default encoding (cp1252/cp437) cannot display U+2013 en dash. T
 
 Output passages are linked to their highest-scoring input passage. When multiple inputs overlap, the tool picks one winner. It cannot distinguish faithful reproduction from accidental lexical overlap, and it cannot prove the agent actually read the input passage before writing the output. Attribution is heuristic proximity, not causal provenance.
 
-## Semantic Validation Threshold
+## Semantic Matching
 
-The `--semantic` flag requires `sentence-transformers` and downloads the `all-MiniLM-L6-v2` model on first use (~80 MB from HuggingFace). Validated against a Zone 2 paraphrase fixture with real embeddings — score 0.4532, above the 0.35 attribution threshold. TF-IDF remains the default matching method. Use `--semantic` when TF-IDF fails on paraphrase-heavy content.
+The `--semantic` flag requires `sentence-transformers` and downloads the `all-MiniLM-L6-v2` model on first use (~80 MB from HuggingFace). TF-IDF remains the default matching method. Use `--semantic` when TF-IDF fails on paraphrase-heavy content.
+
+Validated:
+- Zone 2 paraphrase fixture: score 0.4532, above 0.35 threshold (AD-25)
+- Real ICM pipeline content: all 7 passages attributed correctly, metadata flagged at 0.08 (AD-26)
+- Phase 4 combo test: `--semantic --format json` produces valid JSON with `method: "semantic"`

@@ -1,6 +1,6 @@
-# sem_debug
+# sem_debug v2
 
-Passage-level attribution tracer for AI pipeline outputs.
+Passage-level attribution tracer for AI pipeline outputs. Now with structured JSON output, CONTEXT.md section awareness, and a frozen subprocess contract for orchestrator integration.
 
 ## What it does
 
@@ -12,40 +12,17 @@ Van Clief's ICM (section 6.2) declares which files a stage was given. sem_debug 
 
 ## Setup
 
-You need two repositories. Set up your workspace like this:
-
-```
-your_workspace/
-├── Interpreted-Context-Methdology/
-└── sem_debug/
-```
-
-Step 1. Clone the ICM repo into your workspace folder.
-
-```
-git clone https://github.com/RinDig/Interpreted-Context-Methdology.git
-```
-
-Step 2. Clone sem_debug into the same folder.
-
-```
-git clone https://github.com/WBChain3/sem_debug.git
-```
-
-Step 3. Install sem_debug.
-
-```
-cd sem_debug
+```bash
 pip install .
 ```
 
-Step 4. If you want semantic matching enabled, install the extras.
+For semantic matching (optional):
 
-```
+```bash
 pip install -r requirements-semantic.txt
 ```
 
-Note: the semantic install pulls torch and the sentence-transformers stack. Expect 300-400 MB and a few minutes depending on your connection.
+Note: the semantic install pulls torch and sentence-transformers. Expect 300-400 MB.
 
 Requires Python 3.8 or higher.
 
@@ -53,63 +30,112 @@ Requires Python 3.8 or higher.
 
 ## Usage
 
-Point sem_debug at a stage output file and the declared input files for that stage. Using the ICM folder structure:
+### Basic (markdown report)
 
-```
-sem_debug your_workspace/Interpreted-Context-Methdology/workspaces/your-workspace/stages/your-stage/output/output.md --inputs your_workspace/Interpreted-Context-Methdology/workspaces/your-workspace/stages/your-stage/RESEARCH.md
-```
-
-Common flags:
-
-```
+```bash
 sem_debug output.md --inputs input1.md input2.md
-sem_debug output.md --inputs input1.md --semantic
-sem_debug output.md --inputs input1.md --report report.md
-sem_debug output.md --inputs input1.md --strict
 ```
 
-- `--inputs` — one or more input source markdown files.
-- `--semantic` — enable semantic matching via sentence-transformers on TF-IDF failures.
-- `--report FILE` — write markdown report to FILE instead of stdout.
-- `--strict` — promote DRIFT to BLOCKED (exit code 2) when unattributed passages exist.
-- `--stage LABEL` — stage label for the trace report.
-- `--threshold N` — similarity threshold (default: 0.35).
+### JSON output (machine-readable)
 
-Exit codes: 0 = CLEAN, 1 = DRIFT, 2 = BLOCKED.
+```bash
+sem_debug output.md --inputs input1.md --format json
+sem_debug output.md --inputs input1.md --json           # shorthand
+sem_debug output.md --inputs input1.md --format json --report result.json
+```
 
-![sem_debug running against a live ICM stage](assets/sem_debug_sandbox2.PNG)
+### CONTEXT.md section-aware loading
 
-## What to expect
+```bash
+sem_debug output.md --inputs input1.md input2.md --context-md CONTEXT.md
+```
 
-CLEAN means every passage in the output traced back to a declared input. DRIFT means one or more passages had no detectable source. BLOCKED is DRIFT with --strict enforced, exits with code 2. The unattributed passages are the ones worth reading. They are where the agent went outside the declared context.
+When `--context-md` is provided, sem_debug reads the Inputs table from the CONTEXT.md and loads only the declared sections from each source file. This shrinks the attribution surface to exactly what the stage declared it used.
 
-## What is coming next
+### Common flags
 
-sem_debug v0.1 is a single-stage snapshot tool. These are the natural next steps:
+| Flag | Description |
+|------|-------------|
+| `--inputs FILE [FILE...]` | One or more input source markdown files |
+| `--context-md FILE` | ICM-style CONTEXT.md for section-aware input loading |
+| `--format {markdown,json}` | Output format (default: markdown) |
+| `--json` | Shorthand for `--format json` |
+| `--semantic` | Enable semantic matching via sentence-transformers on TF-IDF failures |
+| `--report FILE` | Write report to FILE instead of stdout |
+| `--strict` | Promote DRIFT to BLOCKED (exit code 2) |
+| `--stage LABEL` | Stage label for the trace report |
+| `--threshold N` | Similarity threshold (default: 0.35) |
 
-- Inline pipeline instrumentation. Call sem_debug as part of the stage run rather than after it.
-- Multi-stage drift tracking. Compare attribution across iterations of the same stage, not just a single output.
-- Zone-level threshold tuning. The current threshold is a single scalar. Different document types and pipeline stages need different values.
-- Report integration. Link trace output back into the ICM stage context instead of writing to a separate file.
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | CLEAN — all passages attributed |
+| 1 | DRIFT — one or more unattributed passages |
+| 2 | BLOCKED — DRIFT with `--strict` enforced |
+
+### JSON output schema
+
+```json
+{
+  "status": "CLEAN|DRIFT|BLOCKED",
+  "exit_code": 0|1|2,
+  "stage": "string",
+  "threshold": 0.35,
+  "attributed": [
+    {
+      "passage_index": 0,
+      "source_file": "input.md",
+      "source_line_start": 12,
+      "score": 0.4821,
+      "method": "tfidf|semantic"
+    }
+  ],
+  "unattributed": [
+    {
+      "passage_index": 2,
+      "best_failed_score": 0.12,
+      "text_preview": "First 80 chars of passage..."
+    }
+  ]
+}
+```
+
+The schema is frozen by `tests/test_json_contract.py` — changing it breaks the test.
+
+![sem_debug install](assets/sem_debug_sandbox2.PNG)
+
+## Subprocess contract
+
+sem_debug is designed to be called by orchestrators via subprocess. The public contract is:
+
+1. Call `sem_debug output.md --inputs ... --format json`
+2. Read stdout as JSON
+3. Check `exit_code`: 0=CLEAN, 1=DRIFT, 2=BLOCKED
+4. Read `unattributed` array for drift details
+
+No programmatic import API is exposed. `__init__.py` stays empty by design.
+
+## Test suite
+
+```bash
+pytest -x
+```
+
+**85 tests** covering attribution, calibration, JSON contract, section parsing, CLI subprocess, and semantic fallback.
+
+## What is coming next (v3 ideas)
+
+- Multi-stage drift tracking. Compare attribution across iterations of the same stage.
+- Zone-level threshold tuning. Different document types need different similarity floors.
+- Report integration. Link trace output back into the ICM stage context automatically.
+- Enforceable section-loading. Prevent stages from reading undeclared sections.
 
 ## Known Limitations
 
-### Language and Environment Dependency
+See `KNOWN_LIMITATIONS.md` for full details.
 
-sem_debug requires Python 3.8 or higher. Windows console default encoding cannot display certain characters in terminal output. Use --report FILE to write correct UTF-8 output on Windows.
-
-### Semantic Matching
-
-The --semantic flag requires sentence-transformers and downloads the all-MiniLM-L6-v2 model on first use, approximately 80 MB from HuggingFace. The full semantic install including torch is 300-400 MB. Validated against a Zone 2 paraphrase fixture with real embeddings, score 0.4532, above the 0.35 attribution threshold. TF-IDF remains the default. Use --semantic when TF-IDF fails on paraphrase-heavy content.
-
-### Single Stage Only
-
-sem_debug traces one output file against a set of input files. It does not compare draft N against draft N+1, track temporal drift across iterations, or instrument pipelines. Each invocation is an independent snapshot.
-
-### Attribution Is Best-Match, Not Causal
-
-Output passages are linked to their highest-scoring input passage. When multiple inputs overlap, the tool picks one winner. It cannot distinguish faithful reproduction from accidental lexical overlap, and it cannot prove the agent read the input passage before writing the output. Attribution is heuristic proximity, not causal provenance.
-
-### Semantic Validation Threshold
-
-The --semantic path uses a cosine-similarity threshold of 0.45. The current validated score is 0.4532 (Zone 2 attributed, threshold passed). This threshold does not adapt per zone, per model, or per document length. Zone-level tuning is not yet implemented.
+- **Attribution is best-match, not causal.** The tool picks the highest-scoring input passage. It cannot prove the agent actually read it.
+- **Section extraction is H2-only.** `parse_file_sections()` tracks `## ` headers as boundaries. Subheaders merge into their parent section.
+- **Single snapshot.** Each invocation is independent. No temporal drift tracking across drafts.
+- **Semantic matching is opt-in.** Requires `sentence-transformers` (~80 MB model download). TF-IDF is the fast default.
