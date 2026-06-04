@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from .models import DEFAULT_THRESHOLD, Verdict
 from .reporter import render, render_json
@@ -57,6 +58,12 @@ def main() -> None:
         default=False,
         help="Shorthand for --format json",
     )
+    parser.add_argument(
+        "--context-md",
+        type=Path,
+        default=None,
+        help="Path to CONTEXT.md for section-aware input loading",
+    )
 
     args = parser.parse_args()
 
@@ -73,6 +80,7 @@ def main() -> None:
         stage=args.stage,
         threshold=args.threshold,
         semantic=args.semantic,
+        context_md=args.context_md,
     )
 
     if args.strict and verdict.status == "DRIFT":

@@ -116,6 +116,46 @@ class TestCliSemantic:
             assert result.returncode in (0, 1)
 
 
+class TestCliContextMd:
+    def test_cli_context_md(self, tmp_path):
+        alpha = str((pathlib.Path(__file__).resolve().parent / "fixtures" / "input_source_alpha.md").resolve())
+        beta = str((pathlib.Path(__file__).resolve().parent / "fixtures" / "input_source_beta.md").resolve())
+        ctx = tmp_path / "CONTEXT.md"
+        ctx.write_text(
+            f"## Inputs\n\n| Source |\n|--------|\n| {alpha} |\n| {beta} |\n",
+            encoding="utf-8",
+        )
+        result = _run(
+            "tests/fixtures/output_clean.md",
+            "--inputs", "tests/fixtures/input_source_alpha.md",
+            "tests/fixtures/input_source_beta.md",
+            "--context-md", str(ctx),
+        )
+        assert result.returncode == 0
+        assert "Status: CLEAN" in result.stdout
+
+    def test_cli_context_md_json_combo(self, tmp_path):
+        alpha = str((pathlib.Path(__file__).resolve().parent / "fixtures" / "input_source_alpha.md").resolve())
+        beta = str((pathlib.Path(__file__).resolve().parent / "fixtures" / "input_source_beta.md").resolve())
+        ctx = tmp_path / "CONTEXT.md"
+        ctx.write_text(
+            f"## Inputs\n\n| Source |\n|--------|\n| {alpha} |\n| {beta} |\n",
+            encoding="utf-8",
+        )
+        result = _run(
+            "tests/fixtures/output_clean.md",
+            "--inputs", "tests/fixtures/input_source_alpha.md",
+            "tests/fixtures/input_source_beta.md",
+            "--context-md", str(ctx),
+            "--format", "json",
+        )
+        assert result.returncode == 0
+        import json
+        parsed = json.loads(result.stdout)
+        assert parsed["status"] == "CLEAN"
+        assert isinstance(parsed["attributed"], list)
+
+
 class TestCliNoInputs:
     def test_cli_no_inputs_error(self):
         result = _run("tests/fixtures/output_draft.md")
